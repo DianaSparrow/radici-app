@@ -53,7 +53,13 @@ const RadiciApp = () => {
       name: '',
       ancestorName: '',
       ancestorType: 'grandparent',
-      includeFamily: []
+      includeFamily: [],
+      familyCounts: {
+        spouse: 1,
+        children: 1,
+        siblings: 1,
+        cousins: 1
+      }
     });
     const [step, setStep] = useState(1);
 
@@ -76,45 +82,61 @@ const RadiciApp = () => {
       ];
 
       let nextId = 2;
+      
+      // Add spouses (usually just 1)
       if (formData.includeFamily.includes('spouse')) {
-        family.push({
-          id: nextId++,
-          name: '',
-          relationship: 'spouse',
-          birthYear: '',
-          birthState: '',
-          isPrimary: false
-        });
+        for (let i = 0; i < formData.familyCounts.spouse; i++) {
+          family.push({
+            id: nextId++,
+            name: '',
+            relationship: 'spouse',
+            birthYear: '',
+            birthState: '',
+            isPrimary: false
+          });
+        }
       }
+      
+      // Add children (can be multiple)
       if (formData.includeFamily.includes('children')) {
-        family.push({
-          id: nextId++,
-          name: '',
-          relationship: 'child',
-          birthYear: '',
-          birthState: '',
-          isPrimary: false
-        });
+        for (let i = 0; i < formData.familyCounts.children; i++) {
+          family.push({
+            id: nextId++,
+            name: '',
+            relationship: 'child',
+            birthYear: '',
+            birthState: '',
+            isPrimary: false
+          });
+        }
       }
+      
+      // Add siblings (can be multiple)
       if (formData.includeFamily.includes('siblings')) {
-        family.push({
-          id: nextId++,
-          name: '',
-          relationship: 'sibling',
-          birthYear: '',
-          birthState: '',
-          isPrimary: false
-        });
+        for (let i = 0; i < formData.familyCounts.siblings; i++) {
+          family.push({
+            id: nextId++,
+            name: '',
+            relationship: 'sibling',
+            birthYear: '',
+            birthState: '',
+            isPrimary: false
+          });
+        }
       }
+      
+      // Add cousins (can be multiple)
       if (formData.includeFamily.includes('cousins')) {
-        family.push({
-          id: nextId++,
-          name: '',
-          relationship: 'cousin',
-          birthYear: '',
-          birthState: '',
-          isPrimary: false
-        });
+        for (let i = 0; i < formData.familyCounts.cousins; i++) {
+          family.push({
+            id: nextId++,
+            name: '',
+            relationship: 'cousin',
+            birthYear: '',
+            birthState: '',
+            isPrimary: false
+          });
+        }
       }
 
       const allDocs = [];
@@ -137,6 +159,16 @@ const RadiciApp = () => {
       setDocuments(allDocs);
       saveData(userData, family, allDocs);
       setCurrentView('dashboard');
+    };
+
+    const updateFamilyCount = (type, count) => {
+      setFormData({
+        ...formData,
+        familyCounts: {
+          ...formData.familyCounts,
+          [type]: Math.max(1, Math.min(10, count)) // Limit between 1-10
+        }
+      });
     };
 
     if (step === 1) {
@@ -204,7 +236,7 @@ const RadiciApp = () => {
             <p className="text-gray-600">Select family members for your application</p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <label className="flex items-center space-x-3">
               <input
                 type="checkbox"
@@ -218,59 +250,118 @@ const RadiciApp = () => {
                 }}
                 className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
               />
-              <span className="text-gray-700">Spouse</span>
+              <span className="text-gray-700 flex-1">Spouse</span>
             </label>
 
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={formData.includeFamily.includes('children')}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setFormData({...formData, includeFamily: [...formData.includeFamily, 'children']});
-                  } else {
-                    setFormData({...formData, includeFamily: formData.includeFamily.filter(f => f !== 'children')});
-                  }
-                }}
-                className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
-              />
-              <span className="text-gray-700">Children</span>
-            </label>
+            <div className="border-l-2 border-gray-200 pl-6 space-y-3">
+              <label className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.includeFamily.includes('children')}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({...formData, includeFamily: [...formData.includeFamily, 'children']});
+                      } else {
+                        setFormData({...formData, includeFamily: formData.includeFamily.filter(f => f !== 'children')});
+                      }
+                    }}
+                    className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
+                  />
+                  <span className="text-gray-700">Children</span>
+                </div>
+                {formData.includeFamily.includes('children') && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => updateFamilyCount('children', formData.familyCounts.children - 1)}
+                      className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center font-medium">{formData.familyCounts.children}</span>
+                    <button
+                      onClick={() => updateFamilyCount('children', formData.familyCounts.children + 1)}
+                      className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </label>
 
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={formData.includeFamily.includes('siblings')}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setFormData({...formData, includeFamily: [...formData.includeFamily, 'siblings']});
-                  } else {
-                    setFormData({...formData, includeFamily: formData.includeFamily.filter(f => f !== 'siblings')});
-                  }
-                }}
-                className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
-              />
-              <span className="text-gray-700">Siblings</span>
-            </label>
+              <label className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.includeFamily.includes('siblings')}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({...formData, includeFamily: [...formData.includeFamily, 'siblings']});
+                      } else {
+                        setFormData({...formData, includeFamily: formData.includeFamily.filter(f => f !== 'siblings')});
+                      }
+                    }}
+                    className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
+                  />
+                  <span className="text-gray-700">Siblings</span>
+                </div>
+                {formData.includeFamily.includes('siblings') && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => updateFamilyCount('siblings', formData.familyCounts.siblings - 1)}
+                      className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center font-medium">{formData.familyCounts.siblings}</span>
+                    <button
+                      onClick={() => updateFamilyCount('siblings', formData.familyCounts.siblings + 1)}
+                      className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </label>
 
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={formData.includeFamily.includes('cousins')}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setFormData({...formData, includeFamily: [...formData.includeFamily, 'cousins']});
-                  } else {
-                    setFormData({...formData, includeFamily: formData.includeFamily.filter(f => f !== 'cousins')});
-                  }
-                }}
-                className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
-              />
-              <div>
-                <span className="text-gray-700">Cousins</span>
-                <p className="text-xs text-gray-500">Who share the same Italian ancestor</p>
-              </div>
-            </label>
+              <label className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.includeFamily.includes('cousins')}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({...formData, includeFamily: [...formData.includeFamily, 'cousins']});
+                      } else {
+                        setFormData({...formData, includeFamily: formData.includeFamily.filter(f => f !== 'cousins')});
+                      }
+                    }}
+                    className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
+                  />
+                  <div className="flex-1">
+                    <span className="text-gray-700">Cousins</span>
+                    <p className="text-xs text-gray-500">Who share the same Italian ancestor</p>
+                  </div>
+                </div>
+                {formData.includeFamily.includes('cousins') && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => updateFamilyCount('cousins', formData.familyCounts.cousins - 1)}
+                      className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center font-medium">{formData.familyCounts.cousins}</span>
+                    <button
+                      onClick={() => updateFamilyCount('cousins', formData.familyCounts.cousins + 1)}
+                      className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </label>
+            </div>
           </div>
 
           <div className="mt-6 space-y-3">
