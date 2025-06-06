@@ -368,6 +368,333 @@ const RadiciApp = () => {
     );
   };
 
+  const DocumentsView = () => {
+    const [selectedPerson, setSelectedPerson] = useState(familyMembers[0]?.id || null);
+    const [showUpload, setShowUpload] = useState(null);
+
+    useEffect(() => {
+      if (!selectedPerson && familyMembers.length > 0) {
+        setSelectedPerson(familyMembers[0].id);
+      }
+    }, [familyMembers, selectedPerson]);
+
+    const updateDocumentStatus = (docId, status, notes = '') => {
+      const updatedDocs = documents.map(doc => 
+        doc.id === docId ? { ...doc, status, notes } : doc
+      );
+      setDocuments(updatedDocs);
+      saveData(null, null, updatedDocs);
+    };
+
+    const handleImageUpload = (docId, file) => {
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const updatedDocs = documents.map(doc => 
+            doc.id === docId ? { 
+              ...doc, 
+              imageUrl: e.target.result,
+              status: doc.status === 'not_started' ? 'in_progress' : doc.status
+            } : doc
+          );
+          setDocuments(updatedDocs);
+          saveData(null, null, updatedDocs);
+          setShowUpload(null);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleCameraCapture = (docId) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      input.onchange = (e) => {
+        if (e.target.files[0]) {
+          handleImageUpload(docId, e.target.files[0]);
+        }
+      };
+      input.click();
+    };
+
+    const removeImage = (docId) => {
+      const updatedDocs = documents.map(doc => 
+        doc.id === docId ? { ...doc, imageUrl: null } : doc
+      );
+      setDocuments(updatedDocs);
+      saveData(null, null, updatedDocs);
+    };
+
+    const selectedPersonDocs = documents.filter(doc => doc.familyMemberId === selectedPerson);
+    const selectedPersonInfo = familyMembers.find(p => p.id === selectedPerson);
+
+    if (familyMembers.length === 0) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">No family members found. Please add family members first.</p>
+            <button
+              onClick={() => setCurrentView('family-tree')}
+              className="mt-4 bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600"
+            >
+              Go to Family Tree
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-gradient-to-r from-orange-800 to-yellow-700 text-white p-6">
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className="text-white mb-2 flex items-center"
+          >
+            ← Back to Dashboard
+          </button>
+          <h1 className="text-xl font-bold">Document Management</h1>
+        </div>
+
+        <div className="p-6">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Family Member</label>
+            <select
+              data-person-selector
+              value={selectedPerson || ''}
+              onChange={(e) => setSelectedPerson(parseInt(e.target.value))}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+            >
+              {familyMembers.map(person => (
+                <option key={person.id} value={person.id}>
+                  {person.name || person.relationship.charAt(0).toUpperCase() + person.relationship.slice(1)}
+                  {person.isPrimary && ' (You)'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Documents for {selectedPersonInfo?.name || selectedPersonInfo?.relationship}
+            </h3>
+            
+            {selectedPersonDocs.length === 0 ? (
+              <div className="bg-white rounded-lg p-6 text-center">
+                <p className="text-gray-600">No documents found for this family member.</p>
+              </div>
+            ) : (
+              selectedPersonDocs.map(doc => (
+                <div key={doc.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-800">
+                        {documentDisplayNames[doc.documentType]}
+                      </h4>
+                      <div className="mt-2">
+                        <select
+                          value={doc.status}
+                          onChange={(e) => updateDocumentStatus(doc.id, e.target.value)}
+                          className="text-sm border border-gray-300 rounded px-3 py-1 focus:ring-2 focus:ring-yellow-500"
+                        >
+                          <option value="not_started">Not Started</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="complete">Complete</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      doc.status === 'complete' ? 'bg-green-100 text-green-800' :
+                      doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {doc.status === 'complete' ? '✓ Complete' :
+                       doc.status === 'in_progress' ? '⏳ In Progress' : '○ Not Started'}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    {doc.imageUrl ? (
+                      <div className="relative">
+                        <img 
+                          src={doc.imageUrl} 
+                          alt={documentDisplayNames[doc.documentType]}
+                          className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                        />
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            onClick={() => setShowUpload(doc.id)}
+                            className="flex-1 bg-blue-500 text-white py-2 px-3 rounded text-sm hover:bg-blue-600"
+                          >
+                            Replace Image
+                          </button>
+                          <button
+                            onClick={() => removeImage(doc.id)}
+                            className="bg-red-500 text-white py-2 px-3 rounded text-sm hover:bg-red-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <div className="text-gray-400 mb-3">
+                          <div className="w-12 h-12 mx-auto bg-gray-200 rounded-lg flex items-center justify-center">
+                            📄
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">Add a photo of this document</p>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => handleCameraCapture(doc.id)}
+                            className="w-full bg-blue-500 text-white py-2 px-4 rounded text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
+                          >
+                            📸 Take Photo
+                          </button>
+                          <button
+                            onClick={() => setShowUpload(doc.id)}
+                            className="w-full bg-gray-500 text-white py-2 px-4 rounded text-sm hover:bg-gray-600 flex items-center justify-center gap-2"
+                          >
+                            📁 Upload Image
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {showUpload === doc.id && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+                        <h3 className="text-lg font-semibold mb-4">Upload Document</h3>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files[0]) {
+                              handleImageUpload(doc.id, e.target.files[0]);
+                            }
+                          }}
+                          className="w-full p-2 border border-gray-300 rounded mb-4"
+                        />
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setShowUpload(null)}
+                            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleCameraCapture(doc.id)}
+                            className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+                          >
+                            Use Camera
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {doc.status !== 'not_started' && (
+                    <div className="mt-3">
+                      <textarea
+                        placeholder="Add notes about this document..."
+                        value={doc.notes}
+                        onChange={(e) => updateDocumentStatus(doc.id, doc.status, e.target.value)}
+                        className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                        rows="2"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-xs text-gray-500">
+                    {doc.documentType === 'birth_certificate' && 'Usually obtained from state vital records office'}
+                    {doc.documentType === 'marriage_certificate' && 'Usually obtained from county clerk or vital records'}
+                    {doc.documentType === 'photo_id' && 'Driver\'s license, state ID, or passport'}
+                    {doc.documentType === 'italian_ancestor_birth' && 'Request from Italian municipality'}
+                    {doc.documentType === 'naturalization_records' && 'USCIS FOIA request or court records'}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const FamilyTreeView = () => {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-gradient-to-r from-orange-800 to-yellow-700 text-white p-6">
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className="text-white mb-2 flex items-center"
+          >
+            ← Back to Dashboard
+          </button>
+          <h1 className="text-xl font-bold">Family Tree</h1>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-white rounded-lg p-6 text-center">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Family Tree Coming Soon</h3>
+            <p className="text-gray-600 mb-4">
+              Interactive family tree with name change tracking and document connections will be available in the next update.
+            </p>
+            <button
+              onClick={() => setCurrentView('documents')}
+              className="bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600"
+            >
+              Manage Documents
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const SettingsView = () => {
+    const clearData = () => {
+      if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+        localStorage.clear();
+        setUser(null);
+        setFamilyMembers([]);
+        setDocuments([]);
+        setCurrentView('onboarding');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-gradient-to-r from-orange-800 to-yellow-700 text-white p-6">
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className="text-white mb-2 flex items-center"
+          >
+            ← Back to Dashboard
+          </button>
+          <h1 className="text-xl font-bold">Settings</h1>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Data Management</h3>
+            <button
+              onClick={clearData}
+              className="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600"
+            >
+              Clear All Data
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              This will remove all your family and document information.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const BottomNav = () => {
     if (currentView === 'onboarding') return null;
 
@@ -411,6 +738,9 @@ const RadiciApp = () => {
     <div className="max-w-md mx-auto bg-white min-h-screen relative">
       {currentView === 'onboarding' && <OnboardingView />}
       {currentView === 'dashboard' && <DashboardView />}
+      {currentView === 'documents' && <DocumentsView />}
+      {currentView === 'family-tree' && <FamilyTreeView />}
+      {currentView === 'settings' && <SettingsView />}
       <BottomNav />
     </div>
   );
