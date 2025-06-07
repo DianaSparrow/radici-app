@@ -197,9 +197,6 @@ const App = () => {
       {currentView === 'family-tree' && (
         <FamilyTreeView {...sharedProps} />
       )}
-      {currentView === 'family-tree' && (
-        <FamilyTreeView {...sharedProps} />
-      )}
       {currentView === 'settings' && (
         <SettingsView {...sharedProps} />
       )}
