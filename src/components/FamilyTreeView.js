@@ -31,9 +31,9 @@ const FamilyTreeView = ({
   const allBasicInfoComplete = useMemo(() => {
     return familyMembers.every(member => {
       if (member.relationship === 'italian_ancestor') {
-        return member.firstName && member.birthLastName && member.birthMonth && member.birthDay && member.birthYear && member.isDeceased !== null;
+        return member.firstName && member.birthLastName && member.birthMonth && member.birthDay && member.birthYear && member.birthLocation && member.isDeceased !== null;
       }
-      return member.firstName && member.birthLastName && member.birthMonth && member.birthDay && member.birthYear && member.birthState;
+      return member.firstName && member.birthLastName && member.birthMonth && member.birthDay && member.birthYear && member.birthCity && member.birthState;
     });
   }, [familyMembers]);
 
@@ -217,7 +217,9 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
   };
 
   const isIncomplete = (!member.firstName && !member.name) || !member.birthLastName || !member.birthMonth || !member.birthDay || !member.birthYear || 
-    (member.relationship === 'italian_ancestor' ? member.isDeceased === null : !member.birthState);
+    (member.relationship === 'italian_ancestor' ? 
+      (member.isDeceased === null || !member.birthLocation) : 
+      (!member.birthCity || !member.birthState));
 
   return (
     <div className="flex justify-between items-start">
@@ -239,12 +241,15 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
         <p className="text-sm text-gray-600 capitalize">
           {member.relationship === 'italian_ancestor' ? 'Italian Ancestor' : member.relationship}
         </p>
-        {(member.birthMonth || member.birthDay || member.birthYear || member.birthState) && (
+        {(member.birthMonth || member.birthDay || member.birthYear || member.birthLocation || member.birthCity || member.birthState) && (
           <p className="text-xs text-gray-500 mt-1">
             {(member.birthMonth && member.birthDay && member.birthYear) && 
               `Born ${member.birthMonth}/${member.birthDay}/${member.birthYear}`}
-            {(member.birthMonth && member.birthDay && member.birthYear) && member.birthState && ' in '}
-            {member.birthState}
+            {(member.birthMonth && member.birthDay && member.birthYear) && (member.birthLocation || (member.birthCity && member.birthState)) && ' in '}
+            {member.relationship === 'italian_ancestor' ? 
+              member.birthLocation : 
+              (member.birthCity && member.birthState && `${member.birthCity}, ${member.birthState}`)
+            }
           </p>
         )}
         {isIncomplete && (
@@ -256,9 +261,15 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
               !member.birthDay && 'birth day',
               !member.birthYear && 'birth year',
               member.relationship === 'italian_ancestor' ? 
-                (member.isDeceased === null && 'living status') :
-                (!member.birthState && 'birth location')
-            ].filter(Boolean).join(', ')}
+                ([
+                  !member.birthLocation && 'birth location',
+                  member.isDeceased === null && 'living status'
+                ].filter(Boolean)) :
+                ([
+                  !member.birthCity && 'birth city',
+                  !member.birthState && 'birth state'
+                ].filter(Boolean))
+            ].flat().filter(Boolean).join(', ')}
           </p>
         )}
       </div>
@@ -314,64 +325,96 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
         />
       </div>
       
-      <div className="grid grid-cols-4 gap-3">
-        <input
-          type="text"
-          value={member.birthMonth || ''}
-          onChange={(e) => {
-            let value = e.target.value.replace(/\D/g, ''); // Only digits
-            if (value.length === 1 && parseInt(value) > 0) {
-              value = '0' + value; // Add leading zero
-            }
-            if (parseInt(value) > 12) value = '12'; // Max 12
-            setFamilyMembers(prev => 
-              prev.map(m => m.id === member.id ? {...m, birthMonth: value} : m)
-            );
-          }}
-          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
-          placeholder="MM"
-          maxLength="2"
-        />
-        <input
-          type="text"
-          value={member.birthDay || ''}
-          onChange={(e) => {
-            let value = e.target.value.replace(/\D/g, ''); // Only digits
-            if (value.length === 1 && parseInt(value) > 0) {
-              value = '0' + value; // Add leading zero
-            }
-            if (parseInt(value) > 31) value = '31'; // Max 31
-            setFamilyMembers(prev => 
-              prev.map(m => m.id === member.id ? {...m, birthDay: value} : m)
-            );
-          }}
-          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
-          placeholder="DD"
-          maxLength="2"
-        />
-        <input
-          type="text"
-          value={member.birthYear || ''}
-          onChange={(e) => {
-            let value = e.target.value.replace(/\D/g, ''); // Only digits
-            if (value.length > 4) value = value.slice(0, 4); // Max 4 digits
-            setFamilyMembers(prev => 
-              prev.map(m => m.id === member.id ? {...m, birthYear: value} : m)
-            );
-          }}
-          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
-          placeholder="YYYY"
-          maxLength="4"
-        />
-        <input
-          type="text"
-          value={member.birthState}
-          onChange={(e) => setFamilyMembers(prev => 
-            prev.map(m => m.id === member.id ? {...m, birthState: e.target.value} : m)
-          )}
-          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
-          placeholder={member.relationship === 'italian_ancestor' ? 'Italian city/province' : 'Birth state/country'}
-        />
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-1">
+          <input
+            type="text"
+            value={member.birthMonth || ''}
+            onChange={(e) => {
+              let value = e.target.value.replace(/\D/g, ''); // Only digits
+              if (value.length === 1 && parseInt(value) > 0) {
+                value = '0' + value; // Add leading zero
+              }
+              if (parseInt(value) > 12) value = '12'; // Max 12
+              setFamilyMembers(prev => 
+                prev.map(m => m.id === member.id ? {...m, birthMonth: value} : m)
+              );
+            }}
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+            placeholder="MM"
+            maxLength="2"
+          />
+          <input
+            type="text"
+            value={member.birthDay || ''}
+            onChange={(e) => {
+              let value = e.target.value.replace(/\D/g, ''); // Only digits
+              if (value.length === 1 && parseInt(value) > 0) {
+                value = '0' + value; // Add leading zero
+              }
+              if (parseInt(value) > 31) value = '31'; // Max 31
+              setFamilyMembers(prev => 
+                prev.map(m => m.id === member.id ? {...m, birthDay: value} : m)
+              );
+            }}
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+            placeholder="DD"
+            maxLength="2"
+          />
+          <input
+            type="text"
+            value={member.birthYear || ''}
+            onChange={(e) => {
+              let value = e.target.value.replace(/\D/g, ''); // Only digits
+              if (value.length > 4) value = value.slice(0, 4); // Max 4 digits
+              setFamilyMembers(prev => 
+                prev.map(m => m.id === member.id ? {...m, birthYear: value} : m)
+              );
+            }}
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+            placeholder="YYYY"
+            maxLength="4"
+          />
+        </div>
+        
+        {/* Location Fields - Conditional based on relationship */}
+        {member.relationship === 'italian_ancestor' ? (
+          <input
+            type="text"
+            value={member.birthLocation || ''}
+            onChange={(e) => setFamilyMembers(prev => 
+              prev.map(m => m.id === member.id ? {...m, birthLocation: e.target.value} : m)
+            )}
+            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+            placeholder="Italian city/province"
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={member.birthCity || ''}
+              onChange={(e) => setFamilyMembers(prev => 
+                prev.map(m => m.id === member.id ? {...m, birthCity: e.target.value} : m)
+              )}
+              className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+              placeholder="US City"
+            />
+            <input
+              type="text"
+              value={member.birthState || ''}
+              onChange={(e) => {
+                let value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); // Only letters, uppercase
+                if (value.length > 2) value = value.slice(0, 2); // Max 2 characters
+                setFamilyMembers(prev => 
+                  prev.map(m => m.id === member.id ? {...m, birthState: value} : m)
+                );
+              }}
+              className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+              placeholder="ST"
+              maxLength="2"
+            />
+          </div>
+        )}
       </div>
       
       {member.relationship === 'italian_ancestor' && (
@@ -454,6 +497,7 @@ const AddMemberModal = ({ memberType, user, onAdd, onCancel }) => {
       birthMonth: formData.get('birthMonth'),
       birthDay: formData.get('birthDay'),
       birthYear: formData.get('birthYear'),
+      birthCity: formData.get('birthCity'),
       birthState: formData.get('birthState')
     });
   };
