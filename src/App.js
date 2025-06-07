@@ -199,7 +199,7 @@ const App = () => {
 //      )}
       {currentView === 'settings' && (
         <SettingsView {...sharedProps} />
-      )}
+     )}
       <BottomNav 
         currentView={currentView} 
         setCurrentView={setCurrentView} 
@@ -207,5 +207,4 @@ const App = () => {
     </div>
   );
 };
-
 export default App;
