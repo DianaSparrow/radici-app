@@ -295,10 +295,12 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
 };
 
 const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
+  const [localMember, setLocalMember] = useState(member);
+
   const handleSave = () => {
     // Update the legacy name field for backwards compatibility
-    const fullName = `${member.firstName || ''} ${member.birthLastName || ''}`.trim();
-    const updatedMember = { ...member, name: fullName };
+    const fullName = `${localMember.firstName || ''} ${localMember.birthLastName || ''}`.trim();
+    const updatedMember = { ...localMember, name: fullName };
     onSave(updatedMember);
   };
 
@@ -307,19 +309,15 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
       <div className="grid grid-cols-2 gap-3">
         <input
           type="text"
-          value={member.firstName || ''}
-          onChange={(e) => setFamilyMembers(prev => 
-            prev.map(m => m.id === member.id ? {...m, firstName: e.target.value} : m)
-          )}
+          value={localMember.firstName || ''}
+          onChange={(e) => setLocalMember(prev => ({...prev, firstName: e.target.value}))}
           className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
           placeholder="First & middle names"
         />
         <input
           type="text"
-          value={member.birthLastName || ''}
-          onChange={(e) => setFamilyMembers(prev => 
-            prev.map(m => m.id === member.id ? {...m, birthLastName: e.target.value} : m)
-          )}
+          value={localMember.birthLastName || ''}
+          onChange={(e) => setLocalMember(prev => ({...prev, birthLastName: e.target.value}))}
           className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
           placeholder="Last name at birth"
         />
