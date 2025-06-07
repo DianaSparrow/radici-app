@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Camera, Upload, Check, Clock, Circle, ArrowLeft, Users, FileText, Settings, Home, Trash2, Plus, Minus } from 'lucide-react';
 
 const RadiciApp = () => {
   const [currentView, setCurrentView] = useState('onboarding');
@@ -24,7 +23,7 @@ const RadiciApp = () => {
 
   // Memoized document requirements by relationship
   const getDocumentsForPerson = useCallback((person) => {
-    const baseDocuments = ['birth_certificate', 'photo_id'];
+    const baseDocuments = ['birth_certificate'];
     
     if (person.relationship === 'spouse' || person.relationship === 'self') {
       baseDocuments.push('marriage_certificate');
@@ -34,23 +33,38 @@ const RadiciApp = () => {
       baseDocuments.push('italian_ancestor_birth', 'naturalization_records');
     }
     
+    if (person.relationship === 'italian_ancestor') {
+      const ancestorDocs = ['italian_birth_certificate', 'us_naturalization_file'];
+      // Only add death certificate if ancestor is marked as deceased
+      if (person.isDeceased) {
+        ancestorDocs.push('death_certificate');
+      }
+      return ancestorDocs;
+    }
+    
     return baseDocuments;
   }, []);
 
   const documentDisplayNames = {
     birth_certificate: 'Birth Certificate',
     marriage_certificate: 'Marriage Certificate', 
-    photo_id: 'Photo ID/Passport',
     italian_ancestor_birth: 'Italian Ancestor Birth Certificate',
-    naturalization_records: 'Naturalization Records'
+    naturalization_records: 'Naturalization Records',
+    // Italian ancestor specific documents
+    italian_birth_certificate: 'Italian Birth Certificate',
+    us_naturalization_file: 'US Naturalization File',
+    death_certificate: 'Death Certificate'
   };
 
   const documentHelpText = {
     birth_certificate: 'Usually obtained from state vital records office',
     marriage_certificate: 'Usually obtained from county clerk or vital records',
-    photo_id: 'Driver\'s license, state ID, or passport',
     italian_ancestor_birth: 'Request from Italian municipality (comune)',
-    naturalization_records: 'USCIS FOIA request or court records'
+    naturalization_records: 'USCIS FOIA request or court records',
+    // Italian ancestor specific documents
+    italian_birth_certificate: 'Request from Italian municipality where ancestor was born',
+    us_naturalization_file: 'USCIS A-File or court naturalization records',
+    death_certificate: 'From state/county where ancestor died'
   };
 
   // Enhanced data persistence
@@ -257,12 +271,42 @@ const RadiciApp = () => {
       <div className="min-h-screen bg-gradient-to-b from-orange-50 to-yellow-50 p-6">
         <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-6">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Find Your Radici</h2>
-            <p className="text-gray-600">Who will be applying for citizenship?</p>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Document Management</h2>
+            <p className="text-gray-600">Whose documents would you like to manage?</p>
+            <p className="text-xs text-gray-500 mt-2">Track documents for yourself and family members in your citizenship case</p>
           </div>
 
           <div className="space-y-4">
-            {['spouse', 'children', 'siblings', 'cousins'].map(familyType => (
+            {/* Spouse - Single checkbox, no counter */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={formData.includeFamily.includes('spouse')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFormData(prev => ({
+                        ...prev, 
+                        includeFamily: [...prev.includeFamily, 'spouse']
+                      }));
+                    } else {
+                      setFormData(prev => ({
+                        ...prev, 
+                        includeFamily: prev.includeFamily.filter(f => f !== 'spouse')
+                      }));
+                    }
+                  }}
+                  className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
+                />
+                <div>
+                  <span className="text-gray-700 font-medium">Spouse</span>
+                  <p className="text-xs text-gray-500">Your current spouse/partner</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Children, Siblings, Cousins - With counters */}
+            {['children', 'siblings', 'cousins'].map(familyType => (
               <div key={familyType} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <label className="flex items-center space-x-3">
@@ -277,6 +321,12 @@ const RadiciApp = () => {
                       {familyType === 'cousins' && (
                         <p className="text-xs text-gray-500">Who share the same Italian ancestor</p>
                       )}
+                      {familyType === 'children' && (
+                        <p className="text-xs text-gray-500">All your children (biological, adopted, step)</p>
+                      )}
+                      {familyType === 'siblings' && (
+                        <p className="text-xs text-gray-500">Brothers and sisters applying together</p>
+                      )}
                     </div>
                   </label>
                 </div>
@@ -287,14 +337,14 @@ const RadiciApp = () => {
                       onClick={() => updateFamilyCount(familyType, formData.familyCounts[familyType] - 1)}
                       className="w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100"
                     >
-                      <Minus size={16} />
+                      −
                     </button>
                     <span className="w-8 text-center font-medium">{formData.familyCounts[familyType]}</span>
                     <button
                       onClick={() => updateFamilyCount(familyType, formData.familyCounts[familyType] + 1)}
                       className="w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100"
                     >
-                      <Plus size={16} />
+                      +
                     </button>
                   </div>
                 )}
@@ -308,7 +358,7 @@ const RadiciApp = () => {
               disabled={loading}
               className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold py-3 rounded-lg hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {loading ? 'Creating Your Plan...' : 'Create Document Plan'}
+              {loading ? 'Setting Up Your Documents...' : 'Create Document Checklist'}
             </button>
             <button
               onClick={() => setStep(1)}
@@ -342,7 +392,7 @@ const RadiciApp = () => {
             </div>
             <h1 className="text-2xl font-bold">Ciao, {user?.name}!</h1>
           </div>
-          <p className="opacity-90">Your path to Italian citizenship</p>
+          <p className="opacity-90">Document management dashboard</p>
         </div>
 
         <div className="p-6">
@@ -387,7 +437,11 @@ const RadiciApp = () => {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-semibold text-gray-800">
-{person.name || `${person.relationship.charAt(0).toUpperCase() + person.relationship.slice(1)}${familyMembers.filter(m => m.relationship === person.relationship).length > 1 ? ` #${familyMembers.filter(m => m.relationship === person.relationship).findIndex(m => m.id === person.id) + 1}` : ''}`}
+                          {person.name || `${person.relationship.charAt(0).toUpperCase() + person.relationship.slice(1)} ${
+                            groupedMembers[person.relationship].length > 1 ? 
+                            `#${groupedMembers[person.relationship].findIndex(m => m.id === person.id) + 1}` : 
+                            ''
+                          }`}
                           {person.isPrimary && ' (You)'}
                         </h4>
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
@@ -511,8 +565,7 @@ const RadiciApp = () => {
             onClick={() => setCurrentView('dashboard')}
             className="text-white mb-2 flex items-center hover:opacity-80"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Dashboard
+            ← Back to Dashboard
           </button>
           <h1 className="text-xl font-bold">Document Management</h1>
         </div>
@@ -567,9 +620,9 @@ const RadiciApp = () => {
                       doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {doc.status === 'complete' && <Check size={12} />}
-                      {doc.status === 'in_progress' && <Clock size={12} />}
-                      {doc.status === 'not_started' && <Circle size={12} />}
+                      {doc.status === 'complete' && '✓'}
+                      {doc.status === 'in_progress' && '⏳'}
+                      {doc.status === 'not_started' && '○'}
                       {doc.status === 'complete' ? 'Complete' :
                        doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
                     </div>
@@ -588,14 +641,13 @@ const RadiciApp = () => {
                             onClick={() => setShowUpload(doc.id)}
                             className="flex-1 bg-blue-500 text-white py-2 px-3 rounded text-sm hover:bg-blue-600 flex items-center justify-center gap-1"
                           >
-                            <Upload size={16} />
-                            Replace
+                            📁 Replace
                           </button>
                           <button
                             onClick={() => removeImage(doc.id)}
                             className="bg-red-500 text-white py-2 px-3 rounded text-sm hover:bg-red-600"
                           >
-                            <Trash2 size={16} />
+                            🗑️
                           </button>
                         </div>
                       </div>
@@ -648,8 +700,7 @@ const RadiciApp = () => {
                             onClick={() => handleCameraCapture(doc.id)}
                             className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-1"
                           >
-                            <Camera size={16} />
-                            Camera
+                            📸 Camera
                           </button>
                         </div>
                       </div>
@@ -690,9 +741,34 @@ const RadiciApp = () => {
         member.id === memberId ? { ...member, ...updates } : member
       );
       setFamilyMembers(updatedFamily);
-      saveData(null, updatedFamily, null);
+
+      // If updating ancestor's deceased status, regenerate their documents
+      const updatedMember = updatedFamily.find(m => m.id === memberId);
+      if (updatedMember && updatedMember.relationship === 'italian_ancestor' && 'isDeceased' in updates) {
+        // Remove old ancestor documents
+        const filteredDocs = documents.filter(doc => doc.familyMemberId !== memberId);
+        
+        // Generate new documents based on deceased status
+        const docTypes = getDocumentsForPerson(updatedMember);
+        const newDocs = docTypes.map(docType => ({
+          id: `${memberId}-${docType}`,
+          familyMemberId: memberId,
+          documentType: docType,
+          status: 'not_started',
+          imageUrl: null,
+          notes: '',
+          createdAt: new Date().toISOString()
+        }));
+
+        const allUpdatedDocs = [...filteredDocs, ...newDocs];
+        setDocuments(allUpdatedDocs);
+        saveData(null, updatedFamily, allUpdatedDocs);
+      } else {
+        saveData(null, updatedFamily, null);
+      }
+      
       setEditingMember(null);
-    }, [familyMembers, saveData]);
+    }, [familyMembers, documents, getDocumentsForPerson, saveData]);
 
     const addFamilyMember = useCallback((memberData) => {
       const newId = Math.max(...familyMembers.map(m => m.id)) + 1;
@@ -740,6 +816,7 @@ const RadiciApp = () => {
 
     const groupedMembers = useMemo(() => {
       const groups = {
+        italian_ancestor: [],
         self: [],
         spouse: [],
         child: [],
@@ -763,8 +840,7 @@ const RadiciApp = () => {
             onClick={() => setCurrentView('dashboard')}
             className="text-white mb-2 flex items-center hover:opacity-80"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Dashboard
+            ← Back to Dashboard
           </button>
           <h1 className="text-xl font-bold">Family Members</h1>
           <p className="text-sm opacity-90">All connected to {user?.ancestorName}</p>
@@ -786,18 +862,23 @@ const RadiciApp = () => {
           {Object.entries(groupedMembers).map(([relationship, members]) => {
             if (members.length === 0) return null;
             
+            const relationshipLabels = {
+              italian_ancestor: 'Italian Ancestor Documents',
+              self: 'Primary Applicant',
+              spouse: 'Spouse',
+              child: 'Children',
+              sibling: 'Siblings',
+              cousin: 'Cousins'
+            };
+            
             return (
               <div key={relationship} className="mb-6">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-lg font-semibold text-gray-800 capitalize">
-                    {relationship === 'self' ? 'Primary Applicant' : 
-                     relationship === 'child' ? 'Children' :
-                     relationship === 'sibling' ? 'Siblings' :
-                     relationship === 'cousin' ? 'Cousins' : 
-                     relationship}
-                    {members.length > 1 && relationship !== 'self' && ` (${members.length})`}
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {relationshipLabels[relationship]}
+                    {members.length > 1 && relationship !== 'self' && relationship !== 'italian_ancestor' && ` (${members.length})`}
                   </h3>
-                  {relationship !== 'self' && relationship !== 'spouse' && (
+                  {relationship !== 'self' && relationship !== 'spouse' && relationship !== 'italian_ancestor' && (
                     <button
                       onClick={() => {
                         setNewMemberType(relationship);
@@ -805,8 +886,7 @@ const RadiciApp = () => {
                       }}
                       className="text-yellow-600 hover:text-yellow-700 flex items-center gap-1 text-sm"
                     >
-                      <Plus size={16} />
-                      Add {relationship === 'child' ? 'Child' : relationship === 'sibling' ? 'Sibling' : 'Cousin'}
+                      + Add {relationship === 'child' ? 'Child' : relationship === 'sibling' ? 'Sibling' : 'Cousin'}
                     </button>
                   )}
                 </div>
@@ -850,8 +930,7 @@ const RadiciApp = () => {
                               onClick={() => updateFamilyMember(member.id, member)}
                               className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-1"
                             >
-                              <Check size={16} />
-                              Save
+                              ✓ Save
                             </button>
                             <button
                               onClick={() => setEditingMember(null)}
@@ -882,14 +961,14 @@ const RadiciApp = () => {
                               onClick={() => setEditingMember(member.id)}
                               className="text-blue-600 hover:text-blue-700 p-1"
                             >
-                              <Settings size={16} />
+                              ⚙️
                             </button>
                             {!member.isPrimary && (
                               <button
                                 onClick={() => removeFamilyMember(member.id)}
                                 className="text-red-600 hover:text-red-700 p-1"
                               >
-                                <Trash2 size={16} />
+                                🗑️
                               </button>
                             )}
                           </div>
@@ -976,8 +1055,7 @@ const RadiciApp = () => {
                 }}
                 className="bg-blue-50 text-blue-700 py-3 rounded-lg hover:bg-blue-100 flex items-center justify-center gap-2"
               >
-                <Plus size={16} />
-                Add Child
+                + Add Child
               </button>
               <button
                 onClick={() => {
@@ -986,8 +1064,7 @@ const RadiciApp = () => {
                 }}
                 className="bg-green-50 text-green-700 py-3 rounded-lg hover:bg-green-100 flex items-center justify-center gap-2"
               >
-                <Plus size={16} />
-                Add Sibling
+                + Add Sibling
               </button>
             </div>
             <button
@@ -997,8 +1074,7 @@ const RadiciApp = () => {
               }}
               className="w-full mt-3 bg-purple-50 text-purple-700 py-3 rounded-lg hover:bg-purple-100 flex items-center justify-center gap-2"
             >
-              <Plus size={16} />
-              Add Cousin
+              + Add Cousin
             </button>
           </div>
         </div>
@@ -1024,8 +1100,7 @@ const RadiciApp = () => {
             onClick={() => setCurrentView('dashboard')}
             className="text-white mb-2 flex items-center hover:opacity-80"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Dashboard
+            ← Back to Dashboard
           </button>
           <h1 className="text-xl font-bold">Settings</h1>
         </div>
@@ -1040,8 +1115,7 @@ const RadiciApp = () => {
               onClick={clearData}
               className="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
             >
-              <Trash2 size={16} />
-              Clear All Data
+              🗑️ Clear All Data
             </button>
           </div>
 
@@ -1088,7 +1162,7 @@ const RadiciApp = () => {
     return (
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 shadow-lg">
         <div className="flex justify-around max-w-md mx-auto">
-          {navItems.map(({ key, icon: Icon, label }) => (
+          {navItems.map(({ key, icon, label }) => (
             <button
               key={key}
               onClick={() => setCurrentView(key)}
@@ -1096,7 +1170,7 @@ const RadiciApp = () => {
                 currentView === key ? 'text-yellow-600' : 'text-gray-600'
               } hover:text-yellow-500 transition-colors`}
             >
-              <Icon size={20} className="mb-1" />
+              <div className="text-xl mb-1">{icon}</div>
               <span className="text-xs">{label}</span>
             </button>
           ))}
