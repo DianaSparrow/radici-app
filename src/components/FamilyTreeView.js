@@ -31,9 +31,9 @@ const FamilyTreeView = ({
   const allBasicInfoComplete = useMemo(() => {
     return familyMembers.every(member => {
       if (member.relationship === 'italian_ancestor') {
-        return member.name && member.birthYear && member.isDeceased !== null;
+        return member.firstName && member.birthLastName && member.birthMonth && member.birthDay && member.birthYear && member.isDeceased !== null;
       }
-      return member.name && member.birthYear && member.birthState;
+      return member.firstName && member.birthLastName && member.birthMonth && member.birthDay && member.birthYear && member.birthState;
     });
   }, [familyMembers]);
 
@@ -200,7 +200,10 @@ const FamilyTreeView = ({
 
 const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
   const formatMemberDisplayName = (member, groupedMembers) => {
-    if (member.name) return member.name;
+    if (member.firstName && member.birthLastName) {
+      return `${member.firstName} ${member.birthLastName}`;
+    }
+    if (member.name) return member.name; // Fallback for old data
     
     const relationshipGroup = groupedMembers[member.relationship] || [];
     const baseTitle = member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1).replace('_', ' ');
@@ -213,7 +216,7 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
     return baseTitle;
   };
 
-  const isIncomplete = !member.name || !member.birthYear || 
+  const isIncomplete = (!member.firstName && !member.name) || !member.birthLastName || !member.birthMonth || !member.birthDay || !member.birthYear || 
     (member.relationship === 'italian_ancestor' ? member.isDeceased === null : !member.birthState);
 
   return (
@@ -236,17 +239,21 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
         <p className="text-sm text-gray-600 capitalize">
           {member.relationship === 'italian_ancestor' ? 'Italian Ancestor' : member.relationship}
         </p>
-        {(member.birthYear || member.birthState) && (
+        {(member.birthMonth || member.birthDay || member.birthYear || member.birthState) && (
           <p className="text-xs text-gray-500 mt-1">
-            {member.birthYear && `Born ${member.birthYear}`}
-            {member.birthYear && member.birthState && ' in '}
+            {(member.birthMonth && member.birthDay && member.birthYear) && 
+              `Born ${member.birthMonth}/${member.birthDay}/${member.birthYear}`}
+            {(member.birthMonth && member.birthDay && member.birthYear) && member.birthState && ' in '}
             {member.birthState}
           </p>
         )}
         {isIncomplete && (
           <p className="text-xs text-amber-600 mt-1">
             Missing: {[
-              !member.name && 'name',
+              (!member.firstName && !member.name) && 'first name',
+              !member.birthLastName && 'last name at birth',
+              !member.birthMonth && 'birth month',
+              !member.birthDay && 'birth day',
               !member.birthYear && 'birth year',
               member.relationship === 'italian_ancestor' ? 
                 (member.isDeceased === null && 'living status') :
@@ -278,29 +285,83 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
 
 const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
   const handleSave = () => {
-    onSave(member);
+    // Update the legacy name field for backwards compatibility
+    const fullName = `${member.firstName || ''} ${member.birthLastName || ''}`.trim();
+    const updatedMember = { ...member, name: fullName };
+    onSave(updatedMember);
   };
 
   return (
     <div className="space-y-3">
-      <input
-        type="text"
-        value={member.name}
-        onChange={(e) => setFamilyMembers(prev => 
-          prev.map(m => m.id === member.id ? {...m, name: e.target.value} : m)
-        )}
-        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
-        placeholder="Full legal name"
-      />
       <div className="grid grid-cols-2 gap-3">
         <input
           type="text"
-          value={member.birthYear}
+          value={member.firstName || ''}
           onChange={(e) => setFamilyMembers(prev => 
-            prev.map(m => m.id === member.id ? {...m, birthYear: e.target.value} : m)
+            prev.map(m => m.id === member.id ? {...m, firstName: e.target.value} : m)
           )}
           className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
-          placeholder="Birth year"
+          placeholder="First & middle names"
+        />
+        <input
+          type="text"
+          value={member.birthLastName || ''}
+          onChange={(e) => setFamilyMembers(prev => 
+            prev.map(m => m.id === member.id ? {...m, birthLastName: e.target.value} : m)
+          )}
+          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+          placeholder="Last name at birth"
+        />
+      </div>
+      
+      <div className="grid grid-cols-4 gap-3">
+        <input
+          type="text"
+          value={member.birthMonth || ''}
+          onChange={(e) => {
+            let value = e.target.value.replace(/\D/g, ''); // Only digits
+            if (value.length === 1 && parseInt(value) > 0) {
+              value = '0' + value; // Add leading zero
+            }
+            if (parseInt(value) > 12) value = '12'; // Max 12
+            setFamilyMembers(prev => 
+              prev.map(m => m.id === member.id ? {...m, birthMonth: value} : m)
+            );
+          }}
+          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+          placeholder="MM"
+          maxLength="2"
+        />
+        <input
+          type="text"
+          value={member.birthDay || ''}
+          onChange={(e) => {
+            let value = e.target.value.replace(/\D/g, ''); // Only digits
+            if (value.length === 1 && parseInt(value) > 0) {
+              value = '0' + value; // Add leading zero
+            }
+            if (parseInt(value) > 31) value = '31'; // Max 31
+            setFamilyMembers(prev => 
+              prev.map(m => m.id === member.id ? {...m, birthDay: value} : m)
+            );
+          }}
+          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+          placeholder="DD"
+          maxLength="2"
+        />
+        <input
+          type="text"
+          value={member.birthYear || ''}
+          onChange={(e) => {
+            let value = e.target.value.replace(/\D/g, ''); // Only digits
+            if (value.length > 4) value = value.slice(0, 4); // Max 4 digits
+            setFamilyMembers(prev => 
+              prev.map(m => m.id === member.id ? {...m, birthYear: value} : m)
+            );
+          }}
+          className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+          placeholder="YYYY"
+          maxLength="4"
         />
         <input
           type="text"
@@ -316,7 +377,7 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
       {member.relationship === 'italian_ancestor' && (
         <div className="bg-blue-50 p-3 rounded-lg">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Is {member.name || 'this ancestor'} still living?
+            Is {(member.firstName && member.birthLastName) ? `${member.firstName} ${member.birthLastName}` : 'this ancestor'} still living?
           </label>
           <div className="space-y-2">
             <label className="flex items-center">
@@ -380,9 +441,18 @@ const AddMemberModal = ({ memberType, user, onAdd, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    
+    const firstName = formData.get('firstName');
+    const birthLastName = formData.get('birthLastName');
+    const fullName = `${firstName} ${birthLastName}`.trim();
+    
     onAdd({
-      name: formData.get('name'),
+      firstName,
+      birthLastName,
+      name: fullName, // For backwards compatibility
       relationship: memberType,
+      birthMonth: formData.get('birthMonth'),
+      birthDay: formData.get('birthDay'),
       birthYear: formData.get('birthYear'),
       birthState: formData.get('birthState')
     });
@@ -396,19 +466,43 @@ const AddMemberModal = ({ memberType, user, onAdd, onCancel }) => {
         </h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-3">
-            <input
-              name="name"
-              type="text"
-              placeholder="Full legal name"
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
-              required
-            />
             <div className="grid grid-cols-2 gap-3">
+              <input
+                name="firstName"
+                type="text"
+                placeholder="First & middle names"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                required
+              />
+              <input
+                name="birthLastName"
+                type="text"
+                placeholder="Last name at birth"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <input
+                name="birthMonth"
+                type="text"
+                placeholder="MM"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+                maxLength="2"
+              />
+              <input
+                name="birthDay"
+                type="text"
+                placeholder="DD"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+                maxLength="2"
+              />
               <input
                 name="birthYear"
                 type="text"
-                placeholder="Birth year"
-                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                placeholder="YYYY"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
+                maxLength="4"
               />
               <input
                 name="birthState"
