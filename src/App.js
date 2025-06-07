@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import OnboardingView from './components/OnboardingView';
 import DashboardView from './components/DashboardView';
 import DocumentsView from './components/DocumentsView';
-import FamilyTreeView from './components/FamilyTreeView';
+// import FamilyTreeView from './components/FamilyTreeView';
 import SettingsView from './components/SettingsView';
 import BottomNav from './components/BottomNav';
 import { getDocumentsForPerson } from './utils/documentHelpers';
@@ -194,9 +194,9 @@ const App = () => {
       {currentView === 'documents' && (
         <DocumentsView {...sharedProps} />
       )}
-      {currentView === 'family-tree' && (
-        <FamilyTreeView {...sharedProps} />
-      )}
+//      {currentView === 'family-tree' && (
+//        <FamilyTreeView {...sharedProps} />
+//      )}
       {currentView === 'settings' && (
         <SettingsView {...sharedProps} />
       )}
