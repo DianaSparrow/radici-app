@@ -232,9 +232,6 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
             )}
             {isIncomplete && <span className="text-amber-600 ml-2">⚠️</span>}
           </h4>
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-            ID: {member.id}
-          </span>
         </div>
         <p className="text-sm text-gray-600 capitalize">
           {member.relationship === 'italian_ancestor' ? 'Italian Ancestor' : member.relationship}
@@ -261,9 +258,10 @@ const MemberDisplay = ({ member, groupedMembers, onEdit, onRemove }) => {
       <div className="flex gap-2">
         <button
           onClick={onEdit}
-          className="text-blue-600 hover:text-blue-700 p-1 transition-colors"
+          className="text-blue-600 hover:text-blue-700 px-2 py-1 transition-colors flex items-center gap-1"
         >
           <Settings size={16} />
+          <span className="text-sm font-medium">Edit</span>
         </button>
         {!member.isPrimary && !member.isAncestor && (
           <button
