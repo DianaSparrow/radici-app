@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Camera, Upload, Check, Clock, Circle, ArrowLeft, Users, FileText, Settings, Home, Trash2, Plus, Minus } from 'lucide-react';
 
 const RadiciApp = () => {
   const [currentView, setCurrentView] = useState('onboarding');
@@ -95,7 +96,6 @@ const RadiciApp = () => {
       ancestorType: 'grandparent',
       includeFamily: [],
       familyCounts: {
-        spouse: 1,
         children: 1,
         siblings: 1,
         cousins: 1
@@ -132,22 +132,48 @@ const RadiciApp = () => {
           isPrimary: true
         }];
 
-        let nextId = 2;
+        // Add Italian ancestor as a special entry
+        family.push({
+          id: 2,
+          name: formData.ancestorName.trim(),
+          relationship: 'italian_ancestor',
+          birthYear: '',
+          birthState: 'Italy',
+          isPrimary: false,
+          isAncestor: true,
+          isDeceased: null // Will be set later by user
+        });
+
+        let nextId = 3;
+        
+        // Add spouse (only one spouse allowed)
+        if (formData.includeFamily.includes('spouse')) {
+          family.push({
+            id: nextId++,
+            name: '',
+            relationship: 'spouse',
+            birthYear: '',
+            birthState: '',
+            isPrimary: false
+          });
+        }
         
         // Generate family members based on selections
-        formData.includeFamily.forEach(familyType => {
-          const count = formData.familyCounts[familyType];
-          for (let i = 0; i < count; i++) {
-            family.push({
-              id: nextId++,
-              name: '',
-              relationship: familyType === 'children' ? 'child' : 
-                          familyType === 'siblings' ? 'sibling' :
-                          familyType === 'cousins' ? 'cousin' : familyType,
-              birthYear: '',
-              birthState: '',
-              isPrimary: false
-            });
+        ['children', 'siblings', 'cousins'].forEach(familyType => {
+          if (formData.includeFamily.includes(familyType)) {
+            const count = formData.familyCounts[familyType];
+            for (let i = 0; i < count; i++) {
+              family.push({
+                id: nextId++,
+                name: '',
+                relationship: familyType === 'children' ? 'child' : 
+                            familyType === 'siblings' ? 'sibling' :
+                            familyType === 'cousins' ? 'cousin' : familyType,
+                birthYear: '',
+                birthState: '',
+                isPrimary: false
+              });
+            }
           }
         });
 
@@ -204,10 +230,18 @@ const RadiciApp = () => {
         <div className="min-h-screen bg-gradient-to-b from-orange-50 to-yellow-50 p-6">
           <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-6">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">R</span>
+              <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <div className="relative">
+                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                    <div className="w-8 h-6 bg-green-500 rounded-t-full"></div>
+                    <div className="w-6 h-4 bg-green-400 rounded-full mx-auto -mt-1"></div>
+                    <div className="w-4 h-3 bg-green-400 rounded-full mx-auto -mt-1"></div>
+                  </div>
+                </div>
               </div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Radici</h1>
+              <h1 className="text-3xl font-bold text-gray-800 mb-1">radici.ai</h1>
+              <p className="text-lg text-gray-700 font-medium mb-2">Your Italian Roots, Your Rights</p>
               <p className="text-gray-600">Your journey to Italian citizenship starts here</p>
             </div>
 
@@ -337,14 +371,14 @@ const RadiciApp = () => {
                       onClick={() => updateFamilyCount(familyType, formData.familyCounts[familyType] - 1)}
                       className="w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100"
                     >
-                      −
+                      <Minus size={16} />
                     </button>
                     <span className="w-8 text-center font-medium">{formData.familyCounts[familyType]}</span>
                     <button
                       onClick={() => updateFamilyCount(familyType, formData.familyCounts[familyType] + 1)}
                       className="w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100"
                     >
-                      +
+                      <Plus size={16} />
                     </button>
                   </div>
                 )}
@@ -430,6 +464,7 @@ const RadiciApp = () => {
             {familyMembers.map(person => {
               const progress = getPersonProgress(person.id);
               const progressPercent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+              const relationshipGroup = familyMembers.filter(m => m.relationship === person.relationship);
               
               return (
                 <div key={person.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
@@ -437,11 +472,7 @@ const RadiciApp = () => {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-semibold text-gray-800">
-                          {person.name || `${person.relationship.charAt(0).toUpperCase() + person.relationship.slice(1)} ${
-                            groupedMembers[person.relationship].length > 1 ? 
-                            `#${groupedMembers[person.relationship].findIndex(m => m.id === person.id) + 1}` : 
-                            ''
-                          }`}
+                          {person.name || `${person.relationship.charAt(0).toUpperCase() + person.relationship.slice(1)}${relationshipGroup.length > 1 ? ` #${relationshipGroup.findIndex(m => m.id === person.id) + 1}` : ''}`}
                           {person.isPrimary && ' (You)'}
                         </h4>
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
@@ -565,7 +596,8 @@ const RadiciApp = () => {
             onClick={() => setCurrentView('dashboard')}
             className="text-white mb-2 flex items-center hover:opacity-80"
           >
-            ← Back to Dashboard
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
           </button>
           <h1 className="text-xl font-bold">Document Management</h1>
         </div>
@@ -620,9 +652,9 @@ const RadiciApp = () => {
                       doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {doc.status === 'complete' && '✓'}
-                      {doc.status === 'in_progress' && '⏳'}
-                      {doc.status === 'not_started' && '○'}
+                      {doc.status === 'complete' && <Check size={12} />}
+                      {doc.status === 'in_progress' && <Clock size={12} />}
+                      {doc.status === 'not_started' && <Circle size={12} />}
                       {doc.status === 'complete' ? 'Complete' :
                        doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
                     </div>
@@ -641,13 +673,14 @@ const RadiciApp = () => {
                             onClick={() => setShowUpload(doc.id)}
                             className="flex-1 bg-blue-500 text-white py-2 px-3 rounded text-sm hover:bg-blue-600 flex items-center justify-center gap-1"
                           >
-                            📁 Replace
+                            <Upload size={16} />
+                            Replace
                           </button>
                           <button
                             onClick={() => removeImage(doc.id)}
                             className="bg-red-500 text-white py-2 px-3 rounded text-sm hover:bg-red-600"
                           >
-                            🗑️
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -700,7 +733,8 @@ const RadiciApp = () => {
                             onClick={() => handleCameraCapture(doc.id)}
                             className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-1"
                           >
-                            📸 Camera
+                            <Camera size={16} />
+                            Camera
                           </button>
                         </div>
                       </div>
@@ -840,7 +874,8 @@ const RadiciApp = () => {
             onClick={() => setCurrentView('dashboard')}
             className="text-white mb-2 flex items-center hover:opacity-80"
           >
-            ← Back to Dashboard
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
           </button>
           <h1 className="text-xl font-bold">Family Members</h1>
           <p className="text-sm opacity-90">All connected to {user?.ancestorName}</p>
@@ -886,14 +921,17 @@ const RadiciApp = () => {
                       }}
                       className="text-yellow-600 hover:text-yellow-700 flex items-center gap-1 text-sm"
                     >
-                      + Add {relationship === 'child' ? 'Child' : relationship === 'sibling' ? 'Sibling' : 'Cousin'}
+                      <Plus size={16} />
+                      Add {relationship === 'child' ? 'Child' : relationship === 'sibling' ? 'Sibling' : 'Cousin'}
                     </button>
                   )}
                 </div>
 
                 <div className="space-y-3">
                   {members.map(member => (
-                    <div key={member.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                    <div key={member.id} className={`bg-white rounded-lg p-4 shadow-sm border ${
+                      member.relationship === 'italian_ancestor' ? 'border-green-200 bg-green-50' : 'border-gray-200'
+                    }`}>
                       {editingMember === member.id ? (
                         <div className="space-y-3">
                           <input
@@ -913,7 +951,7 @@ const RadiciApp = () => {
                                 prev.map(m => m.id === member.id ? {...m, birthYear: e.target.value} : m)
                               )}
                               className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
-                              placeholder="Birth year"
+                              placeholder={member.relationship === 'italian_ancestor' ? 'Birth year' : 'Birth year'}
                             />
                             <input
                               type="text"
@@ -922,15 +960,61 @@ const RadiciApp = () => {
                                 prev.map(m => m.id === member.id ? {...m, birthState: e.target.value} : m)
                               )}
                               className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
-                              placeholder="Birth state/country"
+                              placeholder={member.relationship === 'italian_ancestor' ? 'Italian city/province' : 'Birth state/country'}
                             />
                           </div>
+                          
+                          {member.relationship === 'italian_ancestor' && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Is {member.name || 'this ancestor'} still living?
+                              </label>
+                              <div className="space-y-2">
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`deceased-${member.id}`}
+                                    checked={member.isDeceased === false}
+                                    onChange={() => setFamilyMembers(prev => 
+                                      prev.map(m => m.id === member.id ? {...m, isDeceased: false} : m)
+                                    )}
+                                    className="mr-2"
+                                  />
+                                  <span className="text-sm">Yes, still living</span>
+                                </label>
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`deceased-${member.id}`}
+                                    checked={member.isDeceased === true}
+                                    onChange={() => setFamilyMembers(prev => 
+                                      prev.map(m => m.id === member.id ? {...m, isDeceased: true} : m)
+                                    )}
+                                    className="mr-2"
+                                  />
+                                  <span className="text-sm">Deceased</span>
+                                </label>
+                              </div>
+                              {member.isDeceased === false && (
+                                <p className="text-xs text-blue-600 mt-2">
+                                  ✓ Death certificate not required for living ancestors
+                                </p>
+                              )}
+                              {member.isDeceased === true && (
+                                <p className="text-xs text-orange-600 mt-2">
+                                  Death certificate will be added to document list
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           <div className="flex gap-2">
                             <button
                               onClick={() => updateFamilyMember(member.id, member)}
                               className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-1"
                             >
-                              ✓ Save
+                              <Check size={16} />
+                              Save
                             </button>
                             <button
                               onClick={() => setEditingMember(null)}
@@ -943,11 +1027,29 @@ const RadiciApp = () => {
                       ) : (
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-800">
-                              {member.name || `${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)}`}
-                              {member.isPrimary && ' (You)'}
-                            </h4>
-                            <p className="text-sm text-gray-600 capitalize">{member.relationship}</p>
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-medium text-gray-800">
+                                {member.name || `${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1).replace('_', ' ')} ${
+                                  groupedMembers[member.relationship].length > 1 ? 
+                                  `#${groupedMembers[member.relationship].findIndex(m => m.id === member.id) + 1}` : 
+                                  ''
+                                }`}
+                                {member.isPrimary && ' (You)'}
+                                {member.isAncestor && (
+                                  <span>
+                                    {' 🇮🇹'}
+                                    {member.isDeceased === false && ' (Living)'}
+                                    {member.isDeceased === true && ' (Deceased)'}
+                                  </span>
+                                )}
+                              </h4>
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                ID: {member.id}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 capitalize">
+                              {member.relationship === 'italian_ancestor' ? 'Italian Ancestor' : member.relationship}
+                            </p>
                             {(member.birthYear || member.birthState) && (
                               <p className="text-xs text-gray-500 mt-1">
                                 {member.birthYear && `Born ${member.birthYear}`}
@@ -961,14 +1063,14 @@ const RadiciApp = () => {
                               onClick={() => setEditingMember(member.id)}
                               className="text-blue-600 hover:text-blue-700 p-1"
                             >
-                              ⚙️
+                              <Settings size={16} />
                             </button>
-                            {!member.isPrimary && (
+                            {!member.isPrimary && !member.isAncestor && (
                               <button
                                 onClick={() => removeFamilyMember(member.id)}
                                 className="text-red-600 hover:text-red-700 p-1"
                               >
-                                🗑️
+                                <Trash2 size={16} />
                               </button>
                             )}
                           </div>
@@ -1055,7 +1157,8 @@ const RadiciApp = () => {
                 }}
                 className="bg-blue-50 text-blue-700 py-3 rounded-lg hover:bg-blue-100 flex items-center justify-center gap-2"
               >
-                + Add Child
+                <Plus size={16} />
+                Add Child
               </button>
               <button
                 onClick={() => {
@@ -1064,7 +1167,8 @@ const RadiciApp = () => {
                 }}
                 className="bg-green-50 text-green-700 py-3 rounded-lg hover:bg-green-100 flex items-center justify-center gap-2"
               >
-                + Add Sibling
+                <Plus size={16} />
+                Add Sibling
               </button>
             </div>
             <button
@@ -1074,7 +1178,8 @@ const RadiciApp = () => {
               }}
               className="w-full mt-3 bg-purple-50 text-purple-700 py-3 rounded-lg hover:bg-purple-100 flex items-center justify-center gap-2"
             >
-              + Add Cousin
+              <Plus size={16} />
+              Add Cousin
             </button>
           </div>
         </div>
@@ -1100,7 +1205,8 @@ const RadiciApp = () => {
             onClick={() => setCurrentView('dashboard')}
             className="text-white mb-2 flex items-center hover:opacity-80"
           >
-            ← Back to Dashboard
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
           </button>
           <h1 className="text-xl font-bold">Settings</h1>
         </div>
@@ -1115,7 +1221,8 @@ const RadiciApp = () => {
               onClick={clearData}
               className="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
             >
-              🗑️ Clear All Data
+              <Trash2 size={16} />
+              Clear All Data
             </button>
           </div>
 
@@ -1155,14 +1262,14 @@ const RadiciApp = () => {
     const navItems = [
       { key: 'dashboard', icon: Home, label: 'Dashboard' },
       { key: 'documents', icon: FileText, label: 'Documents' },
-                  { key: 'family-tree', icon: Users, label: 'Family' },
+      { key: 'family-tree', icon: Users, label: 'Family' },
       { key: 'settings', icon: Settings, label: 'Settings' }
     ];
 
     return (
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 shadow-lg">
         <div className="flex justify-around max-w-md mx-auto">
-          {navItems.map(({ key, icon, label }) => (
+          {navItems.map(({ key, icon: Icon, label }) => (
             <button
               key={key}
               onClick={() => setCurrentView(key)}
@@ -1170,7 +1277,7 @@ const RadiciApp = () => {
                 currentView === key ? 'text-yellow-600' : 'text-gray-600'
               } hover:text-yellow-500 transition-colors`}
             >
-              <div className="text-xl mb-1">{icon}</div>
+              <Icon size={20} className="mb-1" />
               <span className="text-xs">{label}</span>
             </button>
           ))}
