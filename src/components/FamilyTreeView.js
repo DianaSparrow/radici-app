@@ -327,16 +327,14 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
         <div className="grid grid-cols-3 gap-1">
           <input
             type="text"
-            value={member.birthMonth || ''}
+            value={localMember.birthMonth || ''}
             onChange={(e) => {
               let value = e.target.value.replace(/\D/g, ''); // Only digits
               if (value.length === 1 && parseInt(value) > 0) {
                 value = '0' + value; // Add leading zero
               }
               if (parseInt(value) > 12) value = '12'; // Max 12
-              setFamilyMembers(prev => 
-                prev.map(m => m.id === member.id ? {...m, birthMonth: value} : m)
-              );
+              setLocalMember(prev => ({...prev, birthMonth: value}));
             }}
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
             placeholder="MM"
@@ -344,16 +342,14 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
           />
           <input
             type="text"
-            value={member.birthDay || ''}
+            value={localMember.birthDay || ''}
             onChange={(e) => {
               let value = e.target.value.replace(/\D/g, ''); // Only digits
               if (value.length === 1 && parseInt(value) > 0) {
                 value = '0' + value; // Add leading zero
               }
               if (parseInt(value) > 31) value = '31'; // Max 31
-              setFamilyMembers(prev => 
-                prev.map(m => m.id === member.id ? {...m, birthDay: value} : m)
-              );
+              setLocalMember(prev => ({...prev, birthDay: value}));
             }}
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
             placeholder="DD"
@@ -361,13 +357,11 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
           />
           <input
             type="text"
-            value={member.birthYear || ''}
+            value={localMember.birthYear || ''}
             onChange={(e) => {
               let value = e.target.value.replace(/\D/g, ''); // Only digits
               if (value.length > 4) value = value.slice(0, 4); // Max 4 digits
-              setFamilyMembers(prev => 
-                prev.map(m => m.id === member.id ? {...m, birthYear: value} : m)
-              );
+              setLocalMember(prev => ({...prev, birthYear: value}));
             }}
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
             placeholder="YYYY"
@@ -376,13 +370,11 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
         </div>
         
         {/* Location Fields - Conditional based on relationship */}
-        {member.relationship === 'italian_ancestor' ? (
+        {localMember.relationship === 'italian_ancestor' ? (
           <input
             type="text"
-            value={member.birthLocation || ''}
-            onChange={(e) => setFamilyMembers(prev => 
-              prev.map(m => m.id === member.id ? {...m, birthLocation: e.target.value} : m)
-            )}
+            value={localMember.birthLocation || ''}
+            onChange={(e) => setLocalMember(prev => ({...prev, birthLocation: e.target.value}))}
             className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
             placeholder="Italian city/province"
           />
@@ -390,22 +382,18 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
           <div className="grid grid-cols-2 gap-3">
             <input
               type="text"
-              value={member.birthCity || ''}
-              onChange={(e) => setFamilyMembers(prev => 
-                prev.map(m => m.id === member.id ? {...m, birthCity: e.target.value} : m)
-              )}
+              value={localMember.birthCity || ''}
+              onChange={(e) => setLocalMember(prev => ({...prev, birthCity: e.target.value}))}
               className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
               placeholder="US City"
             />
             <input
               type="text"
-              value={member.birthState || ''}
+              value={localMember.birthState || ''}
               onChange={(e) => {
                 let value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); // Only letters, uppercase
                 if (value.length > 2) value = value.slice(0, 2); // Max 2 characters
-                setFamilyMembers(prev => 
-                  prev.map(m => m.id === member.id ? {...m, birthState: value} : m)
-                );
+                setLocalMember(prev => ({...prev, birthState: value}));
               }}
               className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 text-center"
               placeholder="ST"
@@ -415,20 +403,18 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
         )}
       </div>
       
-      {member.relationship === 'italian_ancestor' && (
+      {localMember.relationship === 'italian_ancestor' && (
         <div className="bg-blue-50 p-3 rounded-lg">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Is {(member.firstName && member.birthLastName) ? `${member.firstName} ${member.birthLastName}` : 'this ancestor'} still living?
+            Is {(localMember.firstName && localMember.birthLastName) ? `${localMember.firstName} ${localMember.birthLastName}` : 'this ancestor'} still living?
           </label>
           <div className="space-y-2">
             <label className="flex items-center">
               <input
                 type="radio"
-                name={`deceased-${member.id}`}
-                checked={member.isDeceased === false}
-                onChange={() => setFamilyMembers(prev => 
-                  prev.map(m => m.id === member.id ? {...m, isDeceased: false} : m)
-                )}
+                name={`deceased-${localMember.id}`}
+                checked={localMember.isDeceased === false}
+                onChange={() => setLocalMember(prev => ({...prev, isDeceased: false}))}
                 className="mr-2"
               />
               <span className="text-sm">Yes, still living</span>
@@ -436,22 +422,20 @@ const EditMemberForm = ({ member, onSave, onCancel, setFamilyMembers }) => {
             <label className="flex items-center">
               <input
                 type="radio"
-                name={`deceased-${member.id}`}
-                checked={member.isDeceased === true}
-                onChange={() => setFamilyMembers(prev => 
-                  prev.map(m => m.id === member.id ? {...m, isDeceased: true} : m)
-                )}
+                name={`deceased-${localMember.id}`}
+                checked={localMember.isDeceased === true}
+                onChange={() => setLocalMember(prev => ({...prev, isDeceased: true}))}
                 className="mr-2"
               />
               <span className="text-sm">Deceased</span>
             </label>
           </div>
-          {member.isDeceased === false && (
+          {localMember.isDeceased === false && (
             <p className="text-xs text-blue-600 mt-2">
               ✓ Death certificate not required for living ancestors
             </p>
           )}
-          {member.isDeceased === true && (
+          {localMember.isDeceased === true && (
             <p className="text-xs text-orange-600 mt-2">
               Death certificate will be added to document list
             </p>
