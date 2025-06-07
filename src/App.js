@@ -677,3 +677,624 @@ const RadiciApp = () => {
                           <button
                             onClick={() => setShowUpload(doc.id)}
                             className="flex-1 bg-blue-500 text-white py-2 px-3 rounded text-sm hover:bg-blue-600 flex items-center justify-center gap-1"
+>
+                            <Upload size={16} />
+                            Replace
+                          </button>
+                          <button
+                            onClick={() => removeImage(doc.id)}
+                            className="bg-red-500 text-white py-2 px-3 rounded text-sm hover:bg-red-600"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                        <p className="text-sm text-gray-600 mb-4">Add a photo of this document</p>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => handleCameraCapture(doc.id)}
+                            className="w-full bg-blue-500 text-white py-2 px-4 rounded text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
+                          >
+                            <Camera size={16} />
+                            Take Photo
+                          </button>
+                          <button
+                            onClick={() => setShowUpload(doc.id)}
+                            className="w-full bg-gray-500 text-white py-2 px-4 rounded text-sm hover:bg-gray-600 flex items-center justify-center gap-2"
+                          >
+                            <Upload size={16} />
+                            Upload Image
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {showUpload === doc.id && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+                        <h3 className="text-lg font-semibold mb-4">Upload Document</h3>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files[0]) {
+                              handleImageUpload(doc.id, e.target.files[0]);
+                            }
+                          }}
+                          className="w-full p-2 border border-gray-300 rounded mb-4"
+                        />
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setShowUpload(null)}
+                            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleCameraCapture(doc.id)}
+                            className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 flex items-center justify-center gap-1"
+                          >
+                            <Camera size={16} />
+                            Camera
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {doc.status !== 'not_started' && (
+                    <div className="mt-3">
+                      <textarea
+                        placeholder="Add notes about this document..."
+                        value={doc.notes}
+                        onChange={(e) => updateDocumentStatus(doc.id, doc.status, e.target.value)}
+                        className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                        rows="2"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-xs text-gray-500">
+                    {documentHelpText[doc.documentType]}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const FamilyTreeView = () => {
+    const [editingMember, setEditingMember] = useState(null);
+    const [showAddMember, setShowAddMember] = useState(false);
+    const [newMemberType, setNewMemberType] = useState('');
+
+    const updateFamilyMember = useCallback((memberId, updates) => {
+      const updatedFamily = familyMembers.map(member => 
+        member.id === memberId ? { ...member, ...updates } : member
+      );
+      setFamilyMembers(updatedFamily);
+
+      // If updating ancestor's deceased status, regenerate their documents
+      const updatedMember = updatedFamily.find(m => m.id === memberId);
+      if (updatedMember && updatedMember.relationship === 'italian_ancestor' && 'isDeceased' in updates) {
+        // Remove old ancestor documents
+        const filteredDocs = documents.filter(doc => doc.familyMemberId !== memberId);
+        
+        // Generate new documents based on deceased status
+        const docTypes = getDocumentsForPerson(updatedMember);
+        const newDocs = docTypes.map(docType => ({
+          id: `${memberId}-${docType}`,
+          familyMemberId: memberId,
+          documentType: docType,
+          status: 'not_started',
+          imageUrl: null,
+          notes: '',
+          createdAt: new Date().toISOString()
+        }));
+
+        const allUpdatedDocs = [...filteredDocs, ...newDocs];
+        setDocuments(allUpdatedDocs);
+      }
+      
+      setEditingMember(null);
+    }, [familyMembers, documents, getDocumentsForPerson]);
+
+    const addFamilyMember = useCallback((memberData) => {
+      const newId = Math.max(...familyMembers.map(m => m.id)) + 1;
+      const newMember = {
+        id: newId,
+        name: memberData.name || '',
+        relationship: memberData.relationship,
+        birthYear: memberData.birthYear || '',
+        birthState: memberData.birthState || '',
+        isPrimary: false
+      };
+
+      const updatedFamily = [...familyMembers, newMember];
+      setFamilyMembers(updatedFamily);
+
+      // Generate required documents for the new family member
+      const docTypes = getDocumentsForPerson(newMember);
+      const newDocs = docTypes.map(docType => ({
+        id: `${newMember.id}-${docType}`,
+        familyMemberId: newMember.id,
+        documentType: docType,
+        status: 'not_started',
+        imageUrl: null,
+        notes: '',
+        createdAt: new Date().toISOString()
+      }));
+
+      const updatedDocs = [...documents, ...newDocs];
+      setDocuments(updatedDocs);
+      setShowAddMember(false);
+      setNewMemberType('');
+    }, [familyMembers, documents, getDocumentsForPerson]);
+
+    const removeFamilyMember = useCallback((memberId) => {
+      if (window.confirm('Are you sure you want to remove this family member? This will also delete all their documents.')) {
+        const updatedFamily = familyMembers.filter(member => member.id !== memberId);
+        const updatedDocs = documents.filter(doc => doc.familyMemberId !== memberId);
+        
+        setFamilyMembers(updatedFamily);
+        setDocuments(updatedDocs);
+      }
+    }, [familyMembers, documents]);
+
+    const groupedMembers = useMemo(() => {
+      const groups = {
+        italian_ancestor: [],
+        self: [],
+        spouse: [],
+        child: [],
+        sibling: [],
+        cousin: []
+      };
+      
+      familyMembers.forEach(member => {
+        if (groups[member.relationship]) {
+          groups[member.relationship].push(member);
+        }
+      });
+      
+      return groups;
+    }, [familyMembers]);
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-gradient-to-r from-orange-800 to-yellow-700 text-white p-6">
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className="text-white mb-2 flex items-center hover:opacity-80"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </button>
+          <h1 className="text-xl font-bold">Family Members</h1>
+          <p className="text-sm opacity-90">All connected to {user?.ancestorFirstName} {user?.ancestorBirthLastName}</p>
+        </div>
+
+        <div className="p-6">
+          {/* Italian Ancestor Info */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-green-800 mb-2">🇮🇹 Italian-born Ancestor</h3>
+            <p className="text-green-700 text-sm">
+              <strong>{user?.ancestorFirstName} {user?.ancestorBirthLastName}</strong> - {user?.ancestorType}
+            </p>
+            <p className="text-green-600 text-xs mt-1">
+              All family members below must be able to trace their lineage to this ancestor
+            </p>
+          </div>
+
+          {/* Family Groups */}
+          {Object.entries(groupedMembers).map(([relationship, members]) => {
+            if (members.length === 0) return null;
+            
+            const relationshipLabels = {
+              italian_ancestor: 'Italian Ancestor Documents',
+              self: 'Primary Applicant',
+              spouse: 'Spouse',
+              child: 'Children',
+              sibling: 'Siblings',
+              cousin: 'Cousins'
+            };
+            
+            return (
+              <div key={relationship} className="mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {relationshipLabels[relationship]}
+                    {members.length > 1 && relationship !== 'self' && relationship !== 'italian_ancestor' && ` (${members.length})`}
+                  </h3>
+                  {relationship !== 'self' && relationship !== 'spouse' && relationship !== 'italian_ancestor' && (
+                    <button
+                      onClick={() => {
+                        setNewMemberType(relationship);
+                        setShowAddMember(true);
+                      }}
+                      className="text-yellow-600 hover:text-yellow-700 flex items-center gap-1 text-sm"
+                    >
+                      <Plus size={16} />
+                      Add {relationship === 'child' ? 'Child' : relationship === 'sibling' ? 'Sibling' : 'Cousin'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {members.map(member => (
+                    <div key={member.id} className={`bg-white rounded-lg p-4 shadow-sm border ${
+                      member.relationship === 'italian_ancestor' ? 'border-green-200 bg-green-50' : 'border-gray-200'
+                    }`}>
+                      {editingMember === member.id ? (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={(e) => setFamilyMembers(prev => 
+                              prev.map(m => m.id === member.id ? {...m, name: e.target.value} : m)
+                            )}
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                            placeholder="Full legal name"
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="text"
+                              value={member.birthYear}
+                              onChange={(e) => setFamilyMembers(prev => 
+                                prev.map(m => m.id === member.id ? {...m, birthYear: e.target.value} : m)
+                              )}
+                              className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                              placeholder={member.relationship === 'italian_ancestor' ? 'Birth year' : 'Birth year'}
+                            />
+                            <input
+                              type="text"
+                              value={member.birthState}
+                              onChange={(e) => setFamilyMembers(prev => 
+                                prev.map(m => m.id === member.id ? {...m, birthState: e.target.value} : m)
+                              )}
+                              className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                              placeholder={member.relationship === 'italian_ancestor' ? 'Italian city/province' : 'Birth state/country'}
+                            />
+                          </div>
+                          
+                          {member.relationship === 'italian_ancestor' && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Is {member.name || 'this ancestor'} still living?
+                              </label>
+                              <div className="space-y-2">
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`deceased-${member.id}`}
+                                    checked={member.isDeceased === false}
+                                    onChange={() => setFamilyMembers(prev => 
+                                      prev.map(m => m.id === member.id ? {...m, isDeceased: false} : m)
+                                    )}
+                                    className="mr-2"
+                                  />
+                                  <span className="text-sm">Yes, still living</span>
+                                </label>
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`deceased-${member.id}`}
+                                    checked={member.isDeceased === true}
+                                    onChange={() => setFamilyMembers(prev => 
+                                      prev.map(m => m.id === member.id ? {...m, isDeceased: true} : m)
+                                    )}
+                                    className="mr-2"
+                                  />
+                                  <span className="text-sm">Deceased</span>
+                                </label>
+                              </div>
+                              {member.isDeceased === false && (
+                                <p className="text-xs text-blue-600 mt-2">
+                                  ✓ Death certificate not required for living ancestors
+                                </p>
+                              )}
+                              {member.isDeceased === true && (
+                                <p className="text-xs text-orange-600 mt-2">
+                                  Death certificate will be added to document list
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => updateFamilyMember(member.id, member)}
+                              className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center gap-1"
+                            >
+                              <Check size={16} />
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingMember(null)}
+                              className="px-4 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-medium text-gray-800">
+                                {member.name || `${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1).replace('_', ' ')} ${
+                                  groupedMembers[member.relationship].length > 1 ? 
+                                  `#${groupedMembers[member.relationship].findIndex(m => m.id === member.id) + 1}` : 
+                                  ''
+                                }`}
+                                {member.isPrimary && ' (You)'}
+                                {member.isAncestor && (
+                                  <span>
+                                    {' 🇮🇹'}
+                                    {member.isDeceased === false && ' (Living)'}
+                                    {member.isDeceased === true && ' (Deceased)'}
+                                  </span>
+                                )}
+                              </h4>
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                ID: {member.id}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 capitalize">
+                              {member.relationship === 'italian_ancestor' ? 'Italian Ancestor' : member.relationship}
+                            </p>
+                            {(member.birthYear || member.birthState) && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {member.birthYear && `Born ${member.birthYear}`}
+                                {member.birthYear && member.birthState && ' in '}
+                                {member.birthState}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditingMember(member.id)}
+                              className="text-blue-600 hover:text-blue-700 p-1"
+                            >
+                              <Settings size={16} />
+                            </button>
+                            {!member.isPrimary && !member.isAncestor && (
+                              <button
+                                onClick={() => removeFamilyMember(member.id)}
+                                className="text-red-600 hover:text-red-700 p-1"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Add Family Member Modal */}
+          {showAddMember && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+                <h3 className="text-lg font-semibold mb-4">
+                  Add {newMemberType === 'child' ? 'Child' : newMemberType === 'sibling' ? 'Sibling' : 'Cousin'}
+                </h3>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target);
+                  addFamilyMember({
+                    name: formData.get('name'),
+                    relationship: newMemberType,
+                    birthYear: formData.get('birthYear'),
+                    birthState: formData.get('birthState')
+                  });
+                }}>
+                  <div className="space-y-3">
+                    <input
+                      name="name"
+                      type="text"
+                      placeholder="Full legal name"
+                      className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        name="birthYear"
+                        type="text"
+                        placeholder="Birth year"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                      />
+                      <input
+                        name="birthState"
+                        type="text"
+                        placeholder="Birth state/country"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500"
+                      />
+                    </div>
+                    <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                      This {newMemberType} must be able to trace their lineage to <strong>{user?.ancestorFirstName} {user?.ancestorBirthLastName}</strong>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddMember(false)}
+                      className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+            <h3 className="font-semibold text-gray-800 mb-3">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setNewMemberType('child');
+                  setShowAddMember(true);
+                }}
+                className="bg-blue-50 text-blue-700 py-3 rounded-lg hover:bg-blue-100 flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                Add Child
+              </button>
+              <button
+                onClick={() => {
+                  setNewMemberType('sibling');
+                  setShowAddMember(true);
+                }}
+                className="bg-green-50 text-green-700 py-3 rounded-lg hover:bg-green-100 flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                Add Sibling
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                setNewMemberType('cousin');
+                setShowAddMember(true);
+              }}
+              className="w-full mt-3 bg-purple-50 text-purple-700 py-3 rounded-lg hover:bg-purple-100 flex items-center justify-center gap-2"
+            >
+              <Plus size={16} />
+              Add Cousin
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const SettingsView = () => {
+    const clearData = () => {
+      if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+        setUser(null);
+        setFamilyMembers([]);
+        setDocuments([]);
+        setCurrentView('onboarding');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-gradient-to-r from-orange-800 to-yellow-700 text-white p-6">
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className="text-white mb-2 flex items-center hover:opacity-80"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </button>
+          <h1 className="text-xl font-bold">Settings</h1>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Data Management</h3>
+            <p className="text-gray-600 mb-4">
+              This will remove all your family and document information from this session.
+            </p>
+            <button
+              onClick={clearData}
+              className="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
+            >
+              <Trash2 size={16} />
+              Clear All Data
+            </button>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mt-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">About Radici.ai</h3>
+            <div className="flex items-start space-x-3 mb-4">
+              <div className="relative">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+                  <div className="w-6 h-4 bg-green-500 rounded-t-full"></div>
+                  <div className="w-4 h-3 bg-green-400 rounded-full mx-auto -mt-1"></div>
+                </div>
+              </div>
+              <div>
+                <p className="text-gray-700 text-sm mb-2">
+                  <strong>Radici</strong> means "roots" in Italian. We help you trace your Italian roots 
+                  and organize your citizenship application documents.
+                </p>
+                <p className="text-gray-600 text-sm">
+                  All data is stored in memory during this session for privacy and security.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 text-xs text-gray-500 border-t pt-3">
+              <div>radici.ai • Version 1.0</div>
+              <div>Your Italian Roots, Your Rights</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const BottomNav = () => {
+    if (currentView === 'onboarding') return null;
+
+    const navItems = [
+      { key: 'dashboard', icon: Home, label: 'Dashboard' },
+      { key: 'documents', icon: FileText, label: 'Documents' },
+      { key: 'family-tree', icon: Users, label: 'Family' },
+      { key: 'settings', icon: Settings, label: 'Settings' }
+    ];
+
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 shadow-lg">
+        <div className="flex justify-around max-w-md mx-auto">
+          {navItems.map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setCurrentView(key)}
+              className={`flex flex-col items-center py-1 ${
+                currentView === key ? 'text-yellow-600' : 'text-gray-600'
+              } hover:text-yellow-500 transition-colors`}
+            >
+              <Icon size={20} className="mb-1" />
+              <span className="text-xs">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-md mx-auto bg-white min-h-screen relative">
+      {currentView === 'onboarding' && <OnboardingView />}
+      {currentView === 'dashboard' && <DashboardView />}
+      {currentView === 'documents' && <DocumentsView />}
+      {currentView === 'family-tree' && <FamilyTreeView />}
+      {currentView === 'settings' && <SettingsView />}
+      <BottomNav />
+    </div>
+  );
+};
+
+export default RadiciApp;
