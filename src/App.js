@@ -388,8 +388,8 @@ const RadiciApp = () => {
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-semibold text-gray-800">
                           {person.name || `${person.relationship.charAt(0).toUpperCase() + person.relationship.slice(1)} ${
-                            groupedMembers[person.relationship].length > 1 ? 
-                            `#${groupedMembers[person.relationship].findIndex(m => m.id === person.id) + 1}` : 
+                           familyMembers.filter(m => m.relationship === person.relationship).length > 1 ?
+                            #${familyMembers.filter(m => m.relationship === person.relationship).findIndex(m => m.id === person.id) + 1}` :
                             ''
                           }`}
                           {person.isPrimary && ' (You)'}
