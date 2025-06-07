@@ -342,4 +342,4 @@ const OnboardingView = ({ onComplete, loading }) => {
   );
 };
 
-export default OnboardingView;  
+export default OnboardingView;
