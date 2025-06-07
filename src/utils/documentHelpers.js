@@ -30,9 +30,14 @@ export const getDocumentsForPerson = (person) => {
     baseDocuments.push('marriage_certificate');
   }
   
+  // Add parent documents when ancestor is grandparent or great-grandparent
+  if (person.relationship === 'parent') {
+    baseDocuments.push('marriage_certificate'); // Parent's marriage cert
+    return baseDocuments;
+  }
+  
   if (person.relationship === 'italian_ancestor') {
     const ancestorDocs = ['italian_birth_certificate', 'us_naturalization_file'];
-    // Only add death certificate if ancestor is marked as deceased
     if (person.isDeceased) {
       ancestorDocs.push('death_certificate');
     }
