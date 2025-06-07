@@ -30,10 +30,6 @@ export const getDocumentsForPerson = (person) => {
     baseDocuments.push('marriage_certificate');
   }
   
-  if (person.relationship === 'self') {
-    baseDocuments.push('italian_ancestor_birth', 'naturalization_records');
-  }
-  
   if (person.relationship === 'italian_ancestor') {
     const ancestorDocs = ['italian_birth_certificate', 'us_naturalization_file'];
     // Only add death certificate if ancestor is marked as deceased
