@@ -516,7 +516,7 @@ const RadiciApp = () => {
       if (!selectedPerson && familyMembers.length > 0) {
         setSelectedPerson(familyMembers[0].id);
       }
-    }, [familyMembers, selectedPerson]);
+    }, [familyMembers]); // Removed selectedPerson dependency to prevent reset
 
     const updateDocumentStatus = useCallback((docId, status, notes = '') => {
       const updatedDocs = documents.map(doc => 
